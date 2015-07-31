@@ -21,14 +21,37 @@ class yap(QtWidgets.QWidget):
                 self.close()
             elif event.key() == QtCore.Qt.Key_Return:
                 Ui_YaP.set_query(ui, event)
-                Ui_YaP.start_search(ui, event)
+                Ui_YaP.add_line(ui, event)
+                # Ui_YaP.start_search(ui, event)
+
+
+class TableWidget(QtWidgets.QTableWidget):
+
+    def __init__(self, parent=None):
+
+        QtWidgets.QTableWidget.__init__(self, parent)
+
+    def contextMenuEvent(self, event):
+        self.menu = QtWidgets.QMenu(self)
+        renameAction = QtWidgets.QAction('Удалить из списка', self)
+        renameAction.triggered.connect(self.del_row)
+        self.menu.addAction(renameAction)
+        # add other required actions
+        self.menu.popup(QtGui.QCursor.pos())
+
+    def del_row(self):
+        rows = sorted(set(index.row() for index in
+                          ui.table_results.selectedIndexes()))
+        for row in rows:
+            ui.table_results.removeRow(row)
+            ui.table_list.pop(ui.table_indexes[row])
 
 
 class Ui_YaP(object):
     rate_url = 'poligon.info'  # сайт для которого рассситывается рейтинг
     query = ''  # ключевое слово, для которого вычисляется позиция в выдаче Яндекса
-    query_list = []  # список ключевых слов для пакетной обработки
-    recent_requests = []  # складируем уникальные запросы при работе функции start_search()
+    res_list = []
+    session_list = []  # складируем уникальные запросы при работе функции start_search()
     rank = 0  # позиция в выдаче Яндекса 
     file_taken = False  # переключатель для режима работы (выбрана работа с файлом)
     res_list = []  # список результатов работы функции start_search() для базы данных
@@ -36,14 +59,13 @@ class Ui_YaP(object):
     r_count = 0  # счётчик запросов к Яндексу
     db_path = 'keywords.db'
     xls_path = 'rating.xls'
-    cell_word = ''
-    cell_rank = ''
-    cell_date = ''
     table_row = 0
     day_limit = 460
-    counter_sum = 0
     day_overdraft = 0
     recent_limit = 0
+    table_list = []
+    table_indexes = []
+    table_add = []
     search_work = False  # переключатель для функции подссёта лимитов(чтобы не считал вхолостую)
     mode_header = 's'  # показатель для смены заголовка режима работы в группе поиска
     limit_data = [True, 46, 460]
@@ -52,7 +74,7 @@ class Ui_YaP(object):
                     [161, 6, 21],
                     [92, 7, 20],
                     [46, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
-    hour = int(datetime.now().strftime('%H'))  # req_date = str(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    hour = int(datetime.now().strftime('%H'))  # strftime('%Y-%m-%d %H:%M:%S')
     req_date = str(datetime.now().strftime('%Y-%m-%d'))
     query_url = 'https://yandex.ru/search/xml?user=webmaster-poligon\
                 &key=03.279908682:25776a70171503eb70359c5bd5b820dc&l10n=ru\
@@ -80,14 +102,17 @@ class Ui_YaP(object):
                                            QtWidgets.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
         self.groupBox_mode = QtWidgets.QGroupBox(YaP)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_mode.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.groupBox_mode.sizePolicy().hasHeightForWidth())
         self.groupBox_mode.setSizePolicy(sizePolicy)
         self.groupBox_mode.setMinimumSize(QtCore.QSize(220, 90))
         self.groupBox_mode.setObjectName("groupBox_mode")
-        self.radioButton_single_mode = QtWidgets.QRadioButton(self.groupBox_mode)
+        self.radioButton_single_mode = QtWidgets.QRadioButton(
+            self.groupBox_mode)
         self.radioButton_single_mode.setGeometry(QtCore.QRect(10, 20, 131, 21))
         self.radioButton_single_mode.setObjectName("radioButton_single_mode")
         self.radioButton_single_mode.autoExclusive()
@@ -100,13 +125,18 @@ class Ui_YaP(object):
         self.checkBox.setGeometry(QtCore.QRect(10, 60, 211, 21))
         self.checkBox.setObjectName("checkBox")
         self.gridLayout.addWidget(self.groupBox_mode, 0, 1, 1, 1)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum,
+            QtWidgets.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
         self.groupBox_limits = QtWidgets.QGroupBox(YaP)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.MinimumExpanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.MinimumExpanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_limits.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.groupBox_limits.sizePolicy().hasHeightForWidth())
         self.groupBox_limits.setSizePolicy(sizePolicy)
         self.groupBox_limits.setMinimumSize(QtCore.QSize(220, 340))
         self.groupBox_limits.setObjectName("groupBox_limits")
@@ -116,7 +146,8 @@ class Ui_YaP(object):
         self.splitter_gb_limits.setObjectName("splitter_gb_limits")
         self.label_day_limit = QtWidgets.QLabel(self.splitter_gb_limits)
         self.label_day_limit.setObjectName("label_day_limit")
-        self.lcdNumber_day_limit = QtWidgets.QLCDNumber(self.splitter_gb_limits)
+        self.lcdNumber_day_limit = QtWidgets.QLCDNumber(
+            self.splitter_gb_limits)
         font = QtGui.QFont()
         font.setPointSize(18)
         font.setBold(False)
@@ -130,7 +161,8 @@ class Ui_YaP(object):
         self.lcdNumber_day_limit.setObjectName("lcdNumber_day_limit")
         self.label_hour_limit = QtWidgets.QLabel(self.splitter_gb_limits)
         self.label_hour_limit.setObjectName("label_hour_limit")
-        self.lcdNumber_hour_limit = QtWidgets.QLCDNumber(self.splitter_gb_limits)
+        self.lcdNumber_hour_limit = QtWidgets.QLCDNumber(
+            self.splitter_gb_limits)
         font = QtGui.QFont()
         font.setPointSize(18)
         font.setBold(False)
@@ -143,10 +175,12 @@ class Ui_YaP(object):
         self.lcdNumber_hour_limit.setObjectName("lcdNumber_hour_limit")
         self.gridLayout.addWidget(self.groupBox_limits, 1, 1, 1, 1)
         self.groupBox_info = QtWidgets.QGroupBox(YaP)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_info.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.groupBox_info.sizePolicy().hasHeightForWidth())
         self.groupBox_info.setSizePolicy(sizePolicy)
         self.groupBox_info.setMinimumSize(QtCore.QSize(0, 110))
         self.groupBox_info.setMaximumSize(QtCore.QSize(16777215, 150))
@@ -168,10 +202,13 @@ class Ui_YaP(object):
         self.btn_save.setObjectName("btn_save")
         self.gridLayout.addWidget(self.btn_save, 5, 1, 1, 1)
         self.groupBox_main = QtWidgets.QGroupBox(YaP)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.groupBox_main.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.groupBox_main.sizePolicy().hasHeightForWidth())
         self.groupBox_main.setSizePolicy(sizePolicy)
         self.groupBox_main.setMinimumSize(QtCore.QSize(530, 600))
         self.groupBox_main.setSizeIncrement(QtCore.QSize(600, 0))
@@ -186,10 +223,13 @@ class Ui_YaP(object):
         self.btn_search.setObjectName("btn_search")
         self.gridLayout_main.addWidget(self.btn_search, 0, 4, 1, 1)
         self.lineEdit_single_query = QtWidgets.QLineEdit(self.groupBox_main)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.lineEdit_single_query.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.lineEdit_single_query.sizePolicy().hasHeightForWidth())
         self.lineEdit_single_query.setSizePolicy(sizePolicy)
         self.lineEdit_single_query.setMinimumSize(QtCore.QSize(37, 0))
         self.lineEdit_single_query.setObjectName("lineEdit_single_query")
@@ -198,11 +238,13 @@ class Ui_YaP(object):
         self.btn_fileopen.setObjectName("btn_fileopen")
         self.gridLayout_main.addWidget(self.btn_fileopen, 0, 0, 1, 1)
         self.btn_fileopen.setDisabled(True)
-        self.table_results = QtWidgets.QTableWidget(self.groupBox_main)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.table_results = TableWidget(self.groupBox_main)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.table_results.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.table_results.sizePolicy().hasHeightForWidth())
         self.table_results.setSizePolicy(sizePolicy)
         self.table_results.setMinimumSize(QtCore.QSize(500, 496))
         self.table_results.setRowCount(0)
@@ -229,12 +271,16 @@ class Ui_YaP(object):
 
     def retranslateUi(self, YaP):
         _translate = QtCore.QCoreApplication.translate
-        YaP.setWindowTitle(_translate("YaP", "YaP - Yandex xml Parser for gathering of keyword's rating statistics."))
+        YaP.setWindowTitle(
+            _translate(
+                "YaP",
+        "YaP - Yandex xml Parser for gathering of keyword's rating statistics."))
         self.groupBox_mode.setTitle(_translate("YaP", "Режим поиска"))
         self.radioButton_single_mode.setText(
                         _translate("YaP", "Одиночный поиск"))
         self.radioButton_file_mode.setText(_translate("YaP", "Пакетный поиск"))
-        self.checkBox.setText(_translate("YaP", "Очистить таблицу"))
+        self.checkBox.setText(
+            _translate("YaP", "Очищать таблицу при смене режима"))
         self.btn_fileopen.setText(_translate("YaP", "Выбрать файл"))
         self.groupBox_limits.setTitle(
                         _translate("YaP", "Лимиты Яндекса"))
@@ -256,25 +302,162 @@ class Ui_YaP(object):
     def mode_selector(self, event):
         if self.radioButton_single_mode.isChecked() == True:
             self.btn_fileopen.setDisabled(True)
+            self.btn_search.setDisabled(False)
             self.lineEdit_single_query.setDisabled(False)
             self.mode_header = 's'
         else:
             self.btn_fileopen.setDisabled(False)
+            self.btn_search.setDisabled(True)
             self.lineEdit_single_query.setDisabled(True)
             self.mode_header = 'f'
-        if not (self.checkBox.isChecked()):
-            self.table_row = self.table_results.rowCount()
-            self.table_results.setRowCount(self.table_row)
-            pass
-        else:
+        self.retranslateUi(YaP)
+
+    def clean_table(self):
+        if self.checkBox.isChecked():
             self.table_results.setRowCount(0)
             self.table_results.setItem(0, 0, QtWidgets.QTableWidgetItem(''))
             self.table_results.setItem(0, 1, QtWidgets.QTableWidgetItem(''))
             self.table_results.setItem(0, 2, QtWidgets.QTableWidgetItem(''))
             self.table_row = 0
-        self.retranslateUi(YaP)
+            self.table_list = []
+
+    def set_query(self, event):
+        self.table_add = []
+        # введенный текст -> в запрос
+        line_query = self.lineEdit_single_query.text()
+        # обнулили показатель позиции в поиске
+        self.rank = 0
+        # очистили поле ввода запроса
+        self.lineEdit_single_query.setText('')
+        self.table_list.append([line_query, False])
+        self.table_indexes.append(len(self.table_list))
+        self.table_add.append([line_query, False])
+
+    def add_line(self, event):
+        self.table_input(self.table_add)
+
+    def showOpenDialog(self):
+        self.remove_empty_rows(0)
+        # обнулили показатель позиции в поиске
+        self.rank = 0
+        # обнулили путь к файлу xls в окошке программы
+        self.label_filepath.setText('')
+        # обнулили информацию в окне программы
+        self.label_info.setText('')
+        # вызываем диалог выбора файла
+        self.fname, _ = QtWidgets.QFileDialog.getOpenFileName(
+            YaP, 'Open file',
+            'C:\\Users\\gnato\\Desktop\\Igor\\progs\\python_progs\\YaP\\')
+        if len(self.fname) > 0:
+            book = xlrd.open_workbook(self.fname, 'rt', formatting_info=True)
+            sh = book.sheet_by_index(0)
+            self.btn_search.setDisabled(False)
+        else:
+            # обработали вариант когда выбор файла отменён
+            self.label_info.setText('Файл не выбран!')
+            return
+        # помещаем запросы из файла в список
+        for i in range(sh.nrows):
+            self.table_list.append([sh.cell_value(i, 0), False])
+        for i in range(len(self.table_list)):
+            self.table_indexes.append(i)
+        self.table_input(self.table_list)
+        # формируем строку для отображения пути к оркрытому xls-файлу
+        ################################################################
+        fname_chars = []
+        for char in self.fname:
+            if (char == '/'):
+                fname_chars.append('\\')
+            else:
+                fname_chars.append(char)
+        win_path = ''.join(fname_chars)
+        self.label_filepath.setText(win_path)
+        #################################################################
+
+    def table_input(self, add_list):
+        # выводим в таблицу список уникальных запросов из файла
+        for i, item in enumerate(add_list):
+            self.table_row += 1
+            self.table_results.setRowCount(self.table_row + 1)
+            self.table_results.setItem(
+                self.table_row, 0,
+                QtWidgets.QTableWidgetItem(item[0]))
+        self.remove_empty_rows(0)
+
+    def start_search(self, event):
+        # поднимаем флаг search_work для подсчёта лимитов
+        self.search_work = True
+        #################################################################
+        for i, item in enumerate(self.table_list):
+            self.query = self.table_list[i][0]
+            if (len(self.query) != 0):
+                if (self.table_list[i][1] != True):
+                    r = requests.get(self.query_url + self.query)
+                    self.r_count += 1
+                    self.table_list[i][1] = True
+                    self.limit_data = limit(
+                                    self.r_count, self.db_path, self.req_date,
+                                    self.day_limit, self.day_overdraft,
+                                    self.limit_police, self.hour, self.search_work)
+                    # Проверяем не исчерпан ли часовой лимит на запросы.
+                    if (self.limit_data[0]) and (self.limit_data[2] > 0):
+                        # лимит в этом часу доступен и суточный не исчерпан
+                        self.ranking(r)
+                        self.sql_con(self.res_list)
+                        self.remove_empty_rows(1)
+                        self.display_results()
+                        self.remove_empty_rows(1)
+                        self.res_list = []
+                        self.rank = 0
+                    elif (not self.limit_data[0]) and (self.limit_data[2] > 0):
+                        # лимит в этом часу исчерпан, но суточный еще доступен
+                        self.label_info.setText(
+                            'Превышен лимит запросов!\nОжидайте ' +
+                            str(60 - int(datetime.now().strftime('%M'))) +
+                            ' минут.')
+                        return
+                    else:
+                        # суточный лимит не доступен
+                        self.label_info.setText(
+                            'Превышен суточный лимит запросов!\n\
+Заходите завтра :)')
+                        return
+                    self.sql_con(self.res_list)
+                    self.res_list = []
+                    self.rank = 0
+                    self.recent_limit = self.limit_data[1] - 1
+                else:
+                    continue
+            else:
+                # случай пустого запроса
+                self.label_info.setText('Внимание!\nБыл выбран пустой запрос.')
+                print(self.table_list[i][0] +
+                    " - " + str(self.table_list[i][1]))
+        self.search_work = False
+
+    def ranking(self, r):
+        print('ranking')
+        result = r.text
+        result_list = result.split('<url>')
+        for i, item in enumerate(result_list):
+            if self.rate_url in item:
+                self.rank += i
+                break
+        self.limits_show()
+        self.res_list.append((
+            self.query.encode('utf-8').decode('cp1251'),
+            self.rank,
+            self.req_date,))
+
+    def limits_show(self):
+        self.recent_limit = self.limit_data[1]
+        self.lcdNumber_hour_limit.setProperty(
+            "intValue", self.recent_limit)
+        self.lcdNumber_day_limit.setProperty(
+            "intValue", (self.day_limit - self.limit_data[2]-1))
 
     def sql_con(self, res_list):
+        print('sql_con start')
         conn = sqlite3.connect(self.db_path)
         db = conn.cursor()
         db.execute("select name from sqlite_master \
@@ -301,6 +484,37 @@ class Ui_YaP(object):
         conn.commit()
         db.close()
         conn.close()
+        print('sql_con end')
+
+    def display_results(self):
+        print('display_results starts')
+        conn = sqlite3.connect(self.db_path)
+        db = conn.cursor()
+        k = (self.query.encode('utf-8').decode('cp1251'),
+             self.req_date,)
+        db.execute("select * from requests where keyword=? and date=?", k)
+        arr = []
+        for res in db.fetchone():
+            if res != 0:
+                arr.append(res)
+            else:
+                arr.append('> 100')
+        for i in range(len(arr)):
+            self.table_results.setRowCount(
+                self.table_row + 1)
+            self.table_results.setItem(
+                self.table_row, i, QtWidgets.QTableWidgetItem(
+                    str(arr[i]).encode('cp1251').decode('utf-8')))
+        self.table_row += 1
+        db.close()
+        conn.close()
+        self.remove_empty_rows(1)
+        print('display_results end')
+
+    def remove_empty_rows(self, col):
+        for i in range(self.table_results.rowCount()):
+            if (self.table_results.item(i, col) == None):
+                self.table_results.removeRow(i)
 
     def db_xls(self):  # все записи БД из таблицы request переносит в xls-файл
         conn = sqlite3.connect(self.db_path)
@@ -319,127 +533,6 @@ class Ui_YaP(object):
         db.close()
         conn.close()
 
-    def showOpenDialog(self):
-        self.query_list = []
-        self.recent_requests = []
-        self.rank = 0  # обнулили показатель позиции в поиске
-        self.label_filepath.setText('')  # обнулили путь к файлу xls в окошке программы
-        self.label_info.setText('') # обнулили информацию в окне программы
-        self.fname, _ = QtWidgets.QFileDialog.getOpenFileName(
-            YaP, 'Open file',
-            'C:\\Users\\gnato\\Desktop\\Igor\\progs\\python_progs\\YaP\\')
-        if len(self.fname) > 0:
-            book = xlrd.open_workbook(self.fname, 'rt', formatting_info=True)
-            sh = book.sheet_by_index(0)
-        else:
-            self.label_info.setText('Файл не выбран!')
-            return
-        for i in range(sh.nrows):
-            self.query_list.append(sh.cell_value(i, 0))
-            self.table_results.setRowCount(self.table_row + 1)
-            self.table_results.setItem(
-                self.table_row, 0,
-                QtWidgets.QTableWidgetItem(sh.cell_value(i, 0)))
-            self.table_row += 1
-        self.file_taken = True
-        fname_chars = []
-        for char in self.fname:
-            if (char == '/'):
-                fname_chars.append('\\')
-            else:
-                fname_chars.append(char)
-        win_path = ''.join(fname_chars)
-        self.label_filepath.setText(win_path)
-
-    def set_query(self, event):
-        self.query = self.lineEdit_single_query.text()  # присвоили введенный текст запросу
-        self.rank = 0  # обнулили показатель позиции в поиске
-        self.lineEdit_single_query.setText('')  # очистили поле ввода запроса
-
-    def ranking(self, r):
-        result = r.text
-        result_list = result.split('<url>')
-        for i, item in enumerate(result_list):
-            if self.rate_url in item:
-                self.rank += i
-                break
-        if self.rank != 0:
-            self.cell_rank = str(self.rank)
-        else:
-            self.cell_rank = "< 100"
-        self.cell_date = self.req_date
-        self.table_results.setRowCount(self.table_row + 1)
-        if (self.query not in self.recent_requests):
-            self.cell_word = self.query
-            self.recent_requests.append(self.query)
-            all_table_rows = self.table_results.rowCount()
-            for row in range(all_table_rows):
-                if self.table_results.item(row, 0).text() == self.cell_word:
-                    self.table_results.setItem(row, 0, QtWidgets.QTableWidgetItem(self.cell_word))
-                    self.table_results.setItem(row, 1, QtWidgets.QTableWidgetItem(self.cell_rank))
-                    self.table_results.setItem(row, 2, QtWidgets.QTableWidgetItem(self.cell_date))
-                else:
-                    self.table_results.setItem(self.table_row, 0, QtWidgets.QTableWidgetItem(self.cell_word))
-                    self.table_results.setItem(self.table_row, 1, QtWidgets.QTableWidgetItem(self.cell_rank))
-                    self.table_results.setItem(self.table_row, 2, QtWidgets.QTableWidgetItem(self.cell_date))
-            self.table_row += 1
-            self.label_info.setText('Запрос обработан.\nДля сохранения статистики\nнажмите кнопку \"Сохранить\".')
-        else:
-            self.label_info.setText('Этот запрос уже обработан.\nВведите другой запрос.')
-        self.recent_limit = self.limit_data[1]
-        self.lcdNumber_hour_limit.setProperty(
-            "intValue", self.recent_limit)
-        self.lcdNumber_day_limit.setProperty(
-            "intValue", (self.day_limit - self.limit_data[2]-1))
-        self.res_list.append((
-            self.query.encode('utf-8').decode('cp1251'),
-            self.rank,
-            self.req_date,))
-
-    def start_search(self, event):
-        self.search_work = True
-        if self.file_taken and (len(self.query_list) != 0):
-            for j, item in enumerate(self.query_list):
-                self.query = self.query_list[j]
-                r = requests.get(self.query_url + self.query)
-                self.r_count += 1
-                self.limit_data = limit(
-                                self.r_count, self.db_path, self.req_date,
-                                self.day_limit, self.day_overdraft,
-                                self.limit_police, self.hour, self.search_work)
-                if (self.limit_data[0]) and (self.limit_data[2] > 0):  # Проверяет не исчерпан ли часовой лимит на запросы. 
-                    self.ranking(r)
-                    self.sql_con(self.res_list)
-                    self.res_list = []
-                    self.rank = 0
-                    self.recent_limit = self.limit_data[1] - 1
-                elif (not self.limit_data[0]) and (self.limit_data[2] > 0):  # Проверяет не исчерпан ли часовой лимит на запросы. 
-                    self.label_info.setText(str(self.recent_limit) +
-                                            'Превышен лимит запросов!\nОжидайте ' +
-                                            str(60 - int(datetime.now().strftime('%M'))) +
-                                            ' минут.')
-                    return
-                else:
-                    self.label_info.setText('Превышен суточный лимит запросов!\nЗаходите завтра :)')
-                    return
-            self.sql_con(self.res_list)
-            self.res_list = []
-            self.rank = 0
-            self.file_taken = False
-        elif (self.file_taken is False) and (len(self.query) != ''):
-            r = requests.get(self.query_url + self.query)
-            self.r_count += 1
-            self.limit_data = limit(
-                                self.r_count, self.db_path, self.req_date,
-                                self.day_limit, self.day_overdraft,
-                                self.limit_police, self.hour, self.search_work)
-            self.ranking(r)
-            self.sql_con(self.res_list)
-            self.res_list = []
-        else:
-            self.label_info.setText('Внимание!\nБыл выбран пустой запрос.')
-        self.search_work = False
-
 
 if __name__ == "__main__":
     import sys
@@ -452,5 +545,8 @@ if __name__ == "__main__":
     ui.btn_fileopen.clicked.connect(ui.showOpenDialog)
     ui.btn_save.clicked.connect(ui.db_xls)
     ui.radioButton_single_mode.toggled.connect(ui.mode_selector)
+    ui.radioButton_single_mode.toggled.connect(ui.clean_table)
+    ui.radioButton_file_mode.toggled.connect(ui.mode_selector)
+    ui.radioButton_file_mode.toggled.connect(ui.clean_table)
     YaP.show()
     sys.exit(app.exec_())
