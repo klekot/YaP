@@ -48,34 +48,56 @@ class TableWidget(QtWidgets.QTableWidget):
 
 
 class Ui_YaP(object):
-    rate_url = 'poligon.info'  # сайт для которого рассситывается рейтинг
-    query = ''  # ключевое слово, для которого вычисляется позиция в выдаче Яндекса
+    # сайт для которого рассситывается рейтинг
+    rate_url = 'poligon.info'
+    # ключевое слово, для которого вычисляется позиция в выдаче Яндекса
+    query = ''
+    # список результатов рейтинга
     res_list = []
-    session_list = []  # складируем уникальные запросы при работе функции start_search()
-    rank = 0  # позиция в выдаче Яндекса 
-    file_taken = False  # переключатель для режима работы (выбрана работа с файлом)
-    res_list = []  # список результатов работы функции start_search() для базы данных
-    fname = ''  # имя xls-файла для списка запросов и вывода по ним статистики рейтингов
-    r_count = 0  # счётчик запросов к Яндексу
+    # позиция в выдаче Яндекса
+    rank = 0
+    # имя xls-файла для списка запросов и вывода по ним статистики рейтингов
+    fname = ''
+    # счётчик запросов к Яндексу
+    r_count = 0
+    # путь к файлу с базой данных sqlite3
     db_path = 'keywords.db'
+    # путь к файлу с данными по рейтингам запросов
     xls_path = 'rating.xls'
+    # кол-во столбцов в таблице представления данных
     table_row = 0
+    # дневной лимит запросов, предоставленный Яндексом
     day_limit = 460
+    # превышение лимита запросов за предыдущий день
     day_overdraft = 0
+    # лимит запросов в текущем часу
     recent_limit = 0
+    # список запросов, отображаемых в таблице
     table_list = []
+    # список номеров строк в таблице с текущими запросами
     table_indexes = []
+    # сюда поступают одиночные запросы перед добавлением в таблицу
     table_add = []
-    search_work = False  # переключатель для функции подссёта лимитов(чтобы не считал вхолостую)
-    mode_header = 's'  # показатель для смены заголовка режима работы в группе поиска
+    # переключатель для функции подссёта лимитов(чтобы не считал вхолостую)
+    search_work = False
+    # показатель для смены заголовка режима работы в группе поиска
+    mode_header = 's'
+    # данные по текущим лимитам, заполняются возвратом от функции limit()
     limit_data = [True, 46, 460]
+    # политика Яндекса по распределению лимитов по времени суток
+    # первая позиция - лимит запросов, следующие - это часы от 0 до 23,
+    # в течение которых действуют указанные лимиты
     limit_police = [[230, 0, 5, 22, 23],
                     [276, 1, 2, 3, 4],
                     [161, 6, 21],
                     [92, 7, 20],
                     [46, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
-    hour = int(datetime.now().strftime('%H'))  # strftime('%Y-%m-%d %H:%M:%S')
+    # текущий час суток
+    # формат: strftime('%Y-%m-%d %H:%M:%S')
+    hour = int(datetime.now().strftime('%H'))
+    # текущая дата
     req_date = str(datetime.now().strftime('%Y-%m-%d'))
+    # URL запроса к Яндексу
     query_url = 'https://yandex.ru/search/xml?user=webmaster-poligon\
                 &key=03.279908682:25776a70171503eb70359c5bd5b820dc&l10n=ru\
                 &groupby=groups-on-page%3D100&lr=2&query='
@@ -334,7 +356,9 @@ class Ui_YaP(object):
         self.table_add.append([line_query, False])
 
     def add_line(self, event):
+        # self.remove_empty_rows(0)
         self.table_input(self.table_add)
+        # self.remove_empty_rows(0)
 
     def showOpenDialog(self):
         self.remove_empty_rows(0)
@@ -377,12 +401,13 @@ class Ui_YaP(object):
     def table_input(self, add_list):
         # выводим в таблицу список уникальных запросов из файла
         for i, item in enumerate(add_list):
-            self.table_row += 1
+            # self.table_row += 1
             self.table_results.setRowCount(self.table_row + 1)
             self.table_results.setItem(
                 self.table_row, 0,
                 QtWidgets.QTableWidgetItem(item[0]))
-        self.remove_empty_rows(0)
+            # self.table_row -= 1
+        # self.remove_empty_rows(0)
 
     def start_search(self, event):
         # поднимаем флаг search_work для подсчёта лимитов
@@ -390,6 +415,7 @@ class Ui_YaP(object):
         #################################################################
         for i, item in enumerate(self.table_list):
             self.query = self.table_list[i][0]
+            print(self.query)
             if (len(self.query) != 0):
                 if (self.table_list[i][1] != True):
                     r = requests.get(self.query_url + self.query)
@@ -398,29 +424,32 @@ class Ui_YaP(object):
                     self.limit_data = limit(
                                     self.r_count, self.db_path, self.req_date,
                                     self.day_limit, self.day_overdraft,
-                                    self.limit_police, self.hour, self.search_work)
+                                    self.limit_police, self.hour,
+                                    self.search_work)
                     # Проверяем не исчерпан ли часовой лимит на запросы.
                     if (self.limit_data[0]) and (self.limit_data[2] > 0):
                         # лимит в этом часу доступен и суточный не исчерпан
                         self.ranking(r)
                         self.sql_con(self.res_list)
-                        self.remove_empty_rows(1)
+                        # self.remove_empty_rows(1)
                         self.display_results()
-                        self.remove_empty_rows(1)
+                        # self.remove_empty_rows(1)
                         self.res_list = []
                         self.rank = 0
-                    elif (not self.limit_data[0]) and (self.limit_data[2] > 0):
+                    elif (self.limit_data[0] == False) and (self.limit_data[2] > 0):
                         # лимит в этом часу исчерпан, но суточный еще доступен
                         self.label_info.setText(
                             'Превышен лимит запросов!\nОжидайте ' +
                             str(60 - int(datetime.now().strftime('%M'))) +
                             ' минут.')
+                        self.remove_empty_rows(1)
                         return
                     else:
                         # суточный лимит не доступен
                         self.label_info.setText(
                             'Превышен суточный лимит запросов!\n\
 Заходите завтра :)')
+                        # self.remove_empty_rows(1)
                         return
                     self.sql_con(self.res_list)
                     self.res_list = []
@@ -431,8 +460,7 @@ class Ui_YaP(object):
             else:
                 # случай пустого запроса
                 self.label_info.setText('Внимание!\nБыл выбран пустой запрос.')
-                print(self.table_list[i][0] +
-                    " - " + str(self.table_list[i][1]))
+                self.remove_empty_rows(1)
         self.search_work = False
 
     def ranking(self, r):
@@ -540,7 +568,8 @@ if __name__ == "__main__":
     YaP = yap()
     ui = Ui_YaP()
     ui.setupUi(YaP)
-    ui.btn_search.clicked.connect(ui.set_query)
+    # ui.btn_search.clicked.connect(ui.set_query)
+    # ui.btn_search.clicked.connect(ui.add_line)
     ui.btn_search.clicked.connect(ui.start_search)
     ui.btn_fileopen.clicked.connect(ui.showOpenDialog)
     ui.btn_save.clicked.connect(ui.db_xls)
