@@ -8,6 +8,7 @@ from xlwt import Workbook
 from xlwt import easyxf
 import xlrd
 from modules.limit import limit
+import time
 
 
 class yap(QtWidgets.QWidget):
@@ -22,7 +23,6 @@ class yap(QtWidgets.QWidget):
             elif event.key() == QtCore.Qt.Key_Return:
                 Ui_YaP.set_query(ui, event)
                 Ui_YaP.add_line(ui, event)
-                # Ui_YaP.start_search(ui, event)
 
 
 class TableWidget(QtWidgets.QTableWidget):
@@ -361,7 +361,6 @@ class Ui_YaP(object):
         # self.remove_empty_rows(0)
 
     def showOpenDialog(self):
-        self.remove_empty_rows(0)
         # обнулили показатель позиции в поиске
         self.rank = 0
         # обнулили путь к файлу xls в окошке программы
@@ -400,34 +399,54 @@ class Ui_YaP(object):
 
     def table_input(self, add_list):
         # выводим в таблицу список уникальных запросов из файла
+        print("add_list len:")
+        print(len(add_list))
+        print(self.table_row)
         for i, item in enumerate(add_list):
-            # self.table_row += 1
+            self.table_row += 1
             self.table_results.setRowCount(self.table_row + 1)
             self.table_results.setItem(
                 self.table_row, 0,
                 QtWidgets.QTableWidgetItem(item[0]))
-            # self.table_row -= 1
-        # self.remove_empty_rows(0)
+            self.remove_empty_rows(0)
+            print(self.table_row)
 
     def start_search(self, event):
+        q_count = 0  # это кол-во запросов к на обработку
+        for i in range(len(self.table_list)):
+            if (self.table_list[i][1] != True):
+                q_count += 1
+        if q_count > self.limit_data[1]:
+            print("wait for " + str((60 - int(datetime.now().strftime('%M')))))
+            time.sleep((60 - int(datetime.now().strftime('%M')))*60.0)
+            self.search()
+            self.remove_empty_rows(0)
+        else:
+            self.search()
+            self.remove_empty_rows(0)
+
+    def search(self):
         # поднимаем флаг search_work для подсчёта лимитов
         self.search_work = True
         #################################################################
         for i, item in enumerate(self.table_list):
             self.query = self.table_list[i][0]
-            print(self.query)
             if (len(self.query) != 0):
+                q_count = 0
+                if (self.table_list[i][1] != True):
+                    q_count += 1
                 if (self.table_list[i][1] != True):
                     r = requests.get(self.query_url + self.query)
                     self.r_count += 1
                     self.table_list[i][1] = True
                     self.limit_data = limit(
-                                    self.r_count, self.db_path, self.req_date,
-                                    self.day_limit, self.day_overdraft,
-                                    self.limit_police, self.hour,
-                                    self.search_work)
+                                self.r_count, self.db_path, self.req_date,
+                                self.day_limit, self.day_overdraft,
+                                self.limit_police, self.hour,
+                                self.search_work)
                     # Проверяем не исчерпан ли часовой лимит на запросы.
-                    if (self.limit_data[0]) and (self.limit_data[2] > 0):
+                    if (self.limit_data[0] == True) and\
+                       (self.limit_data[2] >= 0):
                         # лимит в этом часу доступен и суточный не исчерпан
                         self.ranking(r)
                         self.sql_con(self.res_list)
@@ -436,8 +455,10 @@ class Ui_YaP(object):
                         # self.remove_empty_rows(1)
                         self.res_list = []
                         self.rank = 0
-                    elif (self.limit_data[0] == False) and (self.limit_data[2] > 0):
-                        # лимит в этом часу исчерпан, но суточный еще доступен
+                    elif (self.limit_data[0] == False) and\
+                         (self.limit_data[2] >= 0):
+                        # лимит в этом часу исчерпан,
+                        # но суточный еще доступен
                         self.label_info.setText(
                             'Превышен лимит запросов!\nОжидайте ' +
                             str(60 - int(datetime.now().strftime('%M'))) +
@@ -447,7 +468,7 @@ class Ui_YaP(object):
                     else:
                         # суточный лимит не доступен
                         self.label_info.setText(
-                            'Превышен суточный лимит запросов!\n\
+                            'Превышен суточный \nлимит запросов!\n\
 Заходите завтра :)')
                         # self.remove_empty_rows(1)
                         return
@@ -459,7 +480,8 @@ class Ui_YaP(object):
                     continue
             else:
                 # случай пустого запроса
-                self.label_info.setText('Внимание!\nБыл выбран пустой запрос.')
+                self.label_info.setText(
+                    'Внимание!\nБыл выбран пустой запрос.')
                 self.remove_empty_rows(1)
         self.search_work = False
 
@@ -527,13 +549,15 @@ class Ui_YaP(object):
                 arr.append(res)
             else:
                 arr.append('> 100')
+        print(arr)
         for i in range(len(arr)):
             self.table_results.setRowCount(
                 self.table_row + 1)
             self.table_results.setItem(
-                self.table_row, i, QtWidgets.QTableWidgetItem(
+                self.table_row, i,
+                QtWidgets.QTableWidgetItem(
                     str(arr[i]).encode('cp1251').decode('utf-8')))
-        self.table_row += 1
+        # self.table_row += 1
         db.close()
         conn.close()
         self.remove_empty_rows(1)
