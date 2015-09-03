@@ -7,8 +7,8 @@ from modules.showOpenDialog import showOpenDialog
 from modules.db_xls import db_xls
 from modules.Ui_YaP import Ui_YaP
 from initSettings import *
-from PyQt5 import QtWebKitWidgets
-from PyQt5.QtWidgets import QWidget
+# from PyQt5 import QtWebKitWidgets
+# from PyQt5.QtWidgets import QWidget
 
 
 class yap(QtWidgets.QWidget):
@@ -23,8 +23,11 @@ class yap(QtWidgets.QWidget):
                 self.close()
                 sys.exit()
             elif event.key() == QtCore.Qt.Key_Return:
-                Ui_YaP.set_query(ui, event)
-                Ui_YaP.add_line(ui, event)
+                if (ui.lineEdit_single_query.text() != ''):
+                    Ui_YaP.set_query(ui, event)
+                    Ui_YaP.add_line(ui, event)
+                elif ((ui.lineEdit_single_query.text() == '') and (len(ui.table_list) != 0)):
+                    Ui_YaP.start_search(ui, YaP, event)
 
     def closeEvent(self, event):
         try:
@@ -41,9 +44,10 @@ class yap(QtWidgets.QWidget):
         Ui_YaP.mode_selector(ui, YaP, event)
 
     def open_file(self):
-        showOpenDialog(YaP, fname, ui.label_filepath, ui.label_info,
+        ui.file_search_count = showOpenDialog(YaP, fname, ui.label_filepath, ui.label_info,
                        ui.btn_search, ui.table_list, ui.table_indexes,
-                       ui.table_add, ui.table_row, ui.table_results)
+                       ui.table_add, ui.table_row, ui.table_results,
+                       ui.search_count, ui.file_search_count)
 
     def searching(self, event):
         # print('searching: call start_search...')

@@ -11,7 +11,7 @@ def search(search_work, table_list, query, query_url,
            res_list, rank, label_info, table_results, rate_url,
            lcdNumber_hour_limit, lcdNumber_day_limit, progressBar,
            value, log, btn_search, lineEdit_single_query, btn_input,
-           circle, new_limit):
+           circle, new_limit, data_source, search_count):
     # ########################################################################
     # query = table_list[len(table_list)-1][0]
     # если запрос не пустой начинаем его обработку
@@ -28,12 +28,12 @@ def search(search_work, table_list, query, query_url,
             limit_data = limit(db_path, req_date, day_limit, day_overdraft,
                                limit_police, hour, search_work, 0,
                                circle, new_limit)
-            coreFunction(
+            count = coreFunction(
                 query_url, query, progressBar, value, rate_url,
                 rank, res_list, req_date, day_limit, limit_data,
                 table_list, table_results, lcdNumber_hour_limit,
                 lcdNumber_day_limit, db_path, log,
-                label_info)
+                label_info, data_source, search_count)
             search_work = False
             # print("search: if >1: limit_data[1] is :", end='')
             # print(limit_data[1])
@@ -43,12 +43,12 @@ def search(search_work, table_list, query, query_url,
             limit_data = limit(db_path, req_date, day_limit, day_overdraft,
                                limit_police, hour, search_work, 0,
                                circle, new_limit)
-            coreFunction(
+            count = coreFunction(
                 query_url, query, progressBar, value, rate_url,
                 rank, res_list, req_date, day_limit, limit_data,
                 table_list, table_results, lcdNumber_hour_limit,
                 lcdNumber_day_limit, db_path, log,
-                label_info)
+                label_info, data_source, search_count)
             search_work = False
             label_info.setText(
                     'Достигнут лимит запросов!\nПродолжим через ' +
@@ -63,12 +63,12 @@ def search(search_work, table_list, query, query_url,
             limit_data = limit(db_path, req_date, day_limit, day_overdraft,
                                limit_police, hour, search_work, 1,
                                circle, new_limit)
-            coreFunction(
+            count = coreFunction(
                 query_url, query, progressBar, value, rate_url,
                 rank, res_list, req_date, day_limit, limit_data,
                 table_list, table_results, lcdNumber_hour_limit,
                 lcdNumber_day_limit, db_path, log,
-                label_info)
+                label_info, data_source, search_count)
             search_work = False
             # print("self.table_list after search ", end='')
             # print(table_list)
@@ -80,4 +80,4 @@ def search(search_work, table_list, query, query_url,
     res_list = []
     rank = 0
     # print('search: go out')
-    return limit_data[1]
+    return [limit_data[1], count]

@@ -24,6 +24,9 @@ class TableWidget(QtWidgets.QTableWidget):
             set(index.row() for index in self.selectedIndexes()))
         i = 0
         for row in rows:
-            self.removeRow(row)
-            self.table_list.pop(self.table_indexes[row] - i)
-            i += 1
+            try:
+                self.removeRow(row)
+                self.table_list.pop(self.table_indexes[row] - i)
+                i += 1
+            except IndexError:
+                pass

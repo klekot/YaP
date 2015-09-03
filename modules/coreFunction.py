@@ -22,7 +22,7 @@ ssl.wrap_socket = sslwrap(ssl.wrap_socket)
 def coreFunction(query_url, query, progressBar, value, rate_url, rank,
                  res_list, req_date, day_limit, limit_data, table_list,
                  table_results, lcdNumber_hour_limit, lcdNumber_day_limit,
-                 db_path, log, label_info):
+                 db_path, log, label_info, data_source, search_count):
     pBar = pbarThread(progressBar, value)
     pBar.start()
     r = requests.get(
@@ -32,11 +32,13 @@ def coreFunction(query_url, query, progressBar, value, rate_url, rank,
             day_limit, limit_data,
             lcdNumber_hour_limit, lcdNumber_day_limit)
     sql_con(db_path, res_list, query, req_date)
-    display_results(db_path, query, req_date,
-                    len(table_list), table_results)
+    count = display_results(db_path, query, req_date,
+                            len(table_list), table_results,
+                            data_source, search_count)
     pBar.stop()
     log.write('Поиск из GUI по запросу "' + query + '";\n')
-    table_list[len(table_list)-1][1] = True
+    table_list[len(table_list) - 1][1] = True
     res_list = []
     rank = 0
-    label_info.setText('Ваш запрос обработан.')
+    # label_info.setText('Ваш запрос обработан.')
+    return count

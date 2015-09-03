@@ -162,8 +162,12 @@ if __name__ == '__main__':
     inputFile = "{}".format(namespace.inputFile)
     outputFile = "{}".format(namespace.outputFile)
     log = Log(db_path, logs_path)
-
-    print("hi!")
+    print("db_path is: ", end=' ')
+    print(db_path)
+    print("logs_path is: ", end=' ')
+    print(logs_path)
+    print("Input file is: ", end="")
+    print(inputFile)
     limit_data = limit(db_path, req_date, day_limit, day_overdraft,
                        limit_police, hour, search_work, 1, 0, 0)
 
@@ -190,4 +194,4 @@ if __name__ == '__main__':
             limit_data.pop(1)
             limit_data.insert(1, search(item, log))
     db_xls(db_path, outputFile, table_list)
-    print("bye!")
+    print("Done.")

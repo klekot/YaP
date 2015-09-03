@@ -7,7 +7,7 @@ from modules.table_input import table_input
 
 def showOpenDialog(YaP, fname, label_filepath, label_info,
                    btn_search, table_list, table_indexes,
-                   table_add, table_row, table_results):
+                   table_add, table_row, table_results, search_count, file_search_count):
     # обнулили отображаемый путь к файлу xls
     label_filepath.setText('')
     # обнулили информацию в окне программы
@@ -35,7 +35,7 @@ def showOpenDialog(YaP, fname, label_filepath, label_info,
     for i in range(len(table_list)):
         table_indexes.append(i)
     data_source = 'file'
-    table_input(table_list, table_row, table_results, data_source)
+    ret = table_input(table_list, table_row, table_results, data_source, search_count, file_search_count)
     # формируем строку для отображения пути к оркрытому xls-файлу
     ################################################################
     fname_chars = []
@@ -47,3 +47,4 @@ def showOpenDialog(YaP, fname, label_filepath, label_info,
     win_path = ''.join(fname_chars)
     label_filepath.setText(win_path)
     #################################################################
+    return ret

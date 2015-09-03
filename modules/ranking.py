@@ -15,6 +15,6 @@ def ranking(r, rate_url, rank, res_list, query, req_date,
     limits_show(day_limit, limit_data,
                 lcdNumber_hour_limit, lcdNumber_day_limit)
     res_list.append((
-        query.encode('utf-8').decode('cp1251'),
+        query.encode('utf-8').decode('cp1251', errors='replace'),
         rank,
         req_date,))

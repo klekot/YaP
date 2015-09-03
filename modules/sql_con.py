@@ -11,7 +11,7 @@ def sql_con(db_path, res_list, query, req_date):
         where type='table' and name='requests'")
     if db.fetchone():
         for res in res_list:
-            k = (query.encode('utf-8').decode('cp1251'),
+            k = (query.encode('utf-8').decode('cp1251', errors='replace'),
                  req_date,)
             db.execute("select * from requests \
                     where keyword=? and date=?", k)
